@@ -195,9 +195,9 @@ const formData = reactive({
 const submissions = ref([
   {
     id: 1,
-    formName: 'Contact Form',
+    formType: 'Contact Form',
     submittedAt: '2024-01-15',
-    data: {
+    formData: {
       name: 'John Doe',
       country: 'us',
       birthDate: '1990-01-01',
@@ -207,9 +207,9 @@ const submissions = ref([
   },
   {
     id: 2,
-    formName: 'Support Request',
+    formType: 'Support Request',
     submittedAt: '2024-01-14',
-    data: {
+    formData: {
       name: 'Jane Smith',
       country: 'gb',
       birthDate: '1985-05-10',
@@ -233,10 +233,9 @@ const openCreateModal = () => {
   showFormModal.value = true
 }
 
-const openViewModal = (submission: any) => {
+const openViewModal = (submission) => {
   modalMode.value = 'view'
   currentSubmissionId.value = submission.id
-  // Populate form with submission data
   Object.assign(formData, submission.data)
   showFormModal.value = true
 }
