@@ -11,7 +11,7 @@ namespace FormService.Services
             _storage = storage;
         }
 
-        public async Task<Guid?> ProcessAndStoreAsync(FormSubmissionDTO submission)
+        public async Task<FormSubmission?> ProcessAndStoreAsync(FormSubmissionDTO submission)
         {
             var fs = submission.MapToFormSubmission();
             var records = new List<BaseRecord>
@@ -32,7 +32,7 @@ namespace FormService.Services
                 }
             };
             return await _storage.StoreAsync(submission.FormType, records)
-                ? fs.Id
+                ? fs
                 : null;
         }
 
