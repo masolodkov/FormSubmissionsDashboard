@@ -136,18 +136,84 @@ namespace FormService.Services
 
         private bool EvaluateFilter(object fieldValue, StorageFilter filter)
         {
-            var fieldString = fieldValue?.ToString() ?? string.Empty;
-            var filterString = filter.Value?.ToString() ?? string.Empty;
             return filter.Operator.ToLower() switch
             {
-                "equals" => string.Equals(fieldString, filterString, StringComparison.InvariantCultureIgnoreCase),
-                "contains" => fieldString.Contains(filterString, StringComparison.InvariantCultureIgnoreCase),
-                "range" when DateTime.TryParse(fieldString, out var fieldDate)
-                          && DateTime.TryParse(filterString, out var fromDate)
-                          && DateTime.TryParse(filter.Value2?.ToString(), out var toDate)
-                    => fieldDate >= fromDate && fieldDate <= toDate,
+                "equals" => EqualsCompare(fieldValue, filter.Value),
+                "contains" => ContainsCompare(fieldValue, filter.Value),
+                "range" => RangeCompare(fieldValue, filter.Value, filter.Value2),
                 _ => false
             };
+        }
+
+        private bool EqualsCompare(object? val1, object? val2)
+        {
+            if (val1 == val2)
+            {
+                return true;
+            }
+            var sVal1 = val1?.ToString() ?? string.Empty;
+            var sVal2 = val2?.ToString() ?? string.Empty;
+            return string.Equals(sVal1, sVal2, StringComparison.InvariantCultureIgnoreCase);
+        }
+        private bool ContainsCompare(object? val1, object? val2)
+        {
+            var sVal1 = val1?.ToString() ?? string.Empty;
+            var sVal2 = val2?.ToString() ?? string.Empty;
+            return sVal1.Contains(sVal2, StringComparison.InvariantCultureIgnoreCase);
+        }
+        private bool RangeCompare(object? testValue, object? fromValue, object? toValue)
+        {
+            if (testValue == null)
+            {
+                return false;
+            }
+
+            var testString = testValue.ToString() ?? string.Empty;
+            var fromString = fromValue?.ToString() ?? string.Empty;
+            var toString = toValue?.ToString() ?? string.Empty;
+
+            // Empty bounds mean unlimited
+            var hasFrom = !string.IsNullOrEmpty(fromString);
+            var hasTo = !string.IsNullOrEmpty(toString);
+
+            // Try numeric comparison first
+            if (double.TryParse(testString, out var testNumber))
+            {
+                bool matches = true;
+
+                if (hasFrom && double.TryParse(fromString, out var fromNumber))
+                {
+                    matches = matches && testNumber >= fromNumber;
+                }
+
+                if (hasTo && double.TryParse(toString, out var toNumber))
+                {
+                    matches = matches && testNumber <= toNumber;
+                }
+
+                return matches;
+            }
+
+            // Try date comparison
+            if (DateTime.TryParse(testString, out var testDate))
+            {
+                bool matches = true;
+
+                if (hasFrom && DateTime.TryParse(fromString, out var fromDate))
+                {
+                    matches = matches && testDate >= fromDate;
+                }
+
+                if (hasTo && DateTime.TryParse(toString, out var toDate))
+                {
+                    matches = matches && testDate <= toDate;
+                }
+
+                return matches;
+            }
+
+            // For other cases, range doesn't make sense
+            return false;
         }
 
         private bool EvaluateJsonFilter(string formDataJson, StorageFilter filter)
