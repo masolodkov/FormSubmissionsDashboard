@@ -123,8 +123,8 @@ namespace FormService.Services
                     JsonFieldName = string.Empty,
                     FieldPath = nameof(FormSubmission.SubmittedAt),
                     Operator = "range",
-                    Value = request.FromDate.HasValue ? request.FromDate : string.Empty,
-                    Value2 = request.ToDate
+                    Value = request.FromDate ?? DateTime.MinValue,
+                    Value2 = request.ToDate ?? DateTime.MaxValue
                 });
             }
 

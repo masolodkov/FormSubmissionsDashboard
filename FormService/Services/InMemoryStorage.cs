@@ -133,16 +133,19 @@ namespace FormService.Services
             }
         }
 
+
         private bool EvaluateFilter(object fieldValue, StorageFilter filter)
         {
+            var fieldString = fieldValue?.ToString() ?? string.Empty;
+            var filterString = filter.Value?.ToString() ?? string.Empty;
             return filter.Operator.ToLower() switch
             {
-                "equals" => fieldValue.Equals(filter.Value),
-                "contains" => (fieldValue?.ToString() ?? string.Empty)
-                    .Contains(filter.Value?.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase),
-                "range" when fieldValue is IComparable comparable
-                          && (string.IsNullOrEmpty(filter.Value.ToString()) || comparable.CompareTo(filter.Value) >= 0)
-                          && (string.IsNullOrEmpty(filter.Value2?.ToString()) || comparable.CompareTo(filter.Value2) <= 0) => true,
+                "equals" => string.Equals(fieldString, filterString, StringComparison.InvariantCultureIgnoreCase),
+                "contains" => fieldString.Contains(filterString, StringComparison.InvariantCultureIgnoreCase),
+                "range" when DateTime.TryParse(fieldString, out var fieldDate)
+                          && DateTime.TryParse(filterString, out var fromDate)
+                          && DateTime.TryParse(filter.Value2?.ToString(), out var toDate)
+                    => fieldDate >= fromDate && fieldDate <= toDate,
                 _ => false
             };
         }
