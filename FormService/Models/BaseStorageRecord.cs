@@ -1,6 +1,6 @@
 ﻿namespace FormService.Models
 {
-    public record BaseRecord
+    public record BaseStorageRecord
     {
         public Guid SubmissionId { get; init; }
         public string Name { get; init; } = string.Empty;

@@ -4,20 +4,23 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h3">📋 Form Submissions</h1>
       <button class="btn btn-primary" @click="openCreateModal">+ New Form</button>
-      <button class="btn btn-outline-info" @click="generateTestData" :disabled="loading">
-        {{ loading ? 'Generating...' : '🎲 Generate Test Data' }}
-      </button>
     </div>
 
     <!-- Search Bar -->
     <div class="row mb-3">
-      <div class="col-md-6">
+      <div class="col md-6">
         <input
           v-model="searchQuery"
           type="text"
           class="form-control"
           placeholder="Search submissions..."
         />
+      </div>
+      <!-- Test Button -->
+      <div class="col">
+        <button class="btn btn-outline-info" @click="generateTestData" :disabled="loading">
+          {{ loading ? 'Generating...' : '🎲 Generate Test Data' }}
+        </button>
       </div>
     </div>
 
@@ -247,8 +250,6 @@ const generateTestData = async () => {
     }))
 
     submissions.value = [...submissions.value, ...transformedSubmissions]
-
-    alert(`Successfully generated ${transformedSubmissions.length} test submissions!`)
   } catch (error) {
     console.error('Error generating test data:', error)
     alert('Error generating test data. Make sure the backend is running!')
@@ -288,11 +289,6 @@ const switchEditMode = () => {
       submissions.value.find((s) => s.id === currentSubmissionId.value)!.formData,
     )
   }
-}
-
-const closeModal = () => {
-  showFormModal.value = false
-  resetForm()
 }
 
 const resetForm = () => {

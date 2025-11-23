@@ -25,10 +25,17 @@ namespace FormService.Controllers
         }
 
         [HttpGet("all/{formType}")]
-        public async Task<IActionResult> GetAll(string? formType)
+        public async Task<IActionResult> GetAll(string formType, [FromQuery] int page, [FromQuery] int pageSize)
         {
-            var submissions = await _formProcessor.GetAllAsync(formType);
-            return Ok(submissions);
+            try
+            {
+                var result = await _formProcessor.GetAllAsync(formType, page, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpGet("{formType}/{id}")]
@@ -45,6 +52,21 @@ namespace FormService.Controllers
             return Ok();
         }
 
+        [HttpPost("search")]
+        public async Task<IActionResult> Search([FromBody] FormSearchRequest request)
+        {
+            try
+            {
+                var result = await _formProcessor.SearchAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        #region === FOR TEST PURPOSE ===
 
         [HttpPost("testData")]
         public async Task<IActionResult> GenerateTestData()
@@ -118,6 +140,8 @@ namespace FormService.Controllers
 
             return submissions;
         }
+
+        #endregion === FOR TEST PURPOSE ===
 
     }
 }
