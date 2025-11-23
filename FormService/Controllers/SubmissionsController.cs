@@ -69,11 +69,11 @@ namespace FormService.Controllers
         #region === FOR TEST PURPOSE ===
 
         [HttpPost("testData")]
-        public async Task<IActionResult> GenerateTestData()
+        public async Task<IActionResult> GenerateTestData([FromQuery] int count)
         {
             try
             {
-                var testSubmissions = GenerateRandomSubmissions(20);
+                var testSubmissions = GenerateRandomSubmissions(count);
                 var results = new List<FormSubmission>();
 
                 foreach (var submission in testSubmissions)
