@@ -3,24 +3,27 @@
     <!-- Dashboard Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h3">📋 Form Submissions</h1>
-      <button class="btn btn-primary" @click="openCreateModal">+ New Form</button>
     </div>
 
     <!-- Search Bar -->
     <div class="row mb-3">
-      <div class="col md-6">
+      <div class="col-md-6">
         <input
           v-model="searchQuery"
           type="text"
           class="form-control"
-          placeholder="Search submissions..."
+          placeholder="Search by name..."
         />
       </div>
-      <!-- Test Button -->
-      <div class="col">
-        <button class="btn btn-outline-info" @click="generateTestData" :disabled="loading">
-          {{ loading ? 'Generating...' : '🎲 Generate Test Data' }}
+      <div class="col-md-6 d-flex gap-2 justify-content-md-end">
+        <button
+          class="btn btn-outline-info flex-shrink-0"
+          @click="generateTestData"
+          :disabled="loading"
+        >
+          {{ loading ? 'Generating...' : `🎲 +${randomSubmitsCount} Random Submits` }}
         </button>
+        <button class="btn btn-primary flex-shrink-0" @click="openCreateModal">+ New Form</button>
       </div>
     </div>
 
@@ -55,6 +58,13 @@
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        :current-page="pagination.currentPage"
+        :total-pages="pagination.totalPages"
+        :total-count="pagination.totalCount"
+        @page-change="goToPage"
+      />
     </div>
 
     <!-- Form Modal -->
@@ -181,6 +191,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
+import Pagination from './Pagination.vue'
 
 interface FormData {
   name: string
@@ -196,6 +207,20 @@ interface Submission {
   submittedAt: string
   formData: FormData
 }
+interface SubmissionResponse {
+  id: number
+  formType: string
+  submittedAt: string
+  formData: string
+}
+
+interface PaginatedResult {
+  items: SubmissionResponse[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
 
 const showFormModal = ref(false)
 const searchQuery = ref('')
@@ -203,6 +228,7 @@ const modalMode = ref<'create' | 'view' | 'edit'>('create')
 const currentSubmissionId = ref<number | null>(null)
 const loading = ref(false)
 const apiUrl = 'http://localhost:5127/api/submissions'
+const randomSubmitsCount = 25
 
 const formData = reactive<FormData>({
   name: '',
@@ -231,7 +257,7 @@ const submissions = ref<Submission[]>([
 const generateTestData = async () => {
   loading.value = true
   try {
-    const response = await fetch(`${apiUrl}/testData`, {
+    const response = await fetch(`${apiUrl}/testData?count=${randomSubmitsCount}`, {
       method: 'POST',
     })
 
@@ -239,17 +265,7 @@ const generateTestData = async () => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const newSubmissions = await response.json()
-
-    // Transform backend data to match our frontend structure
-    const transformedSubmissions = newSubmissions.map((sub: any) => ({
-      id: sub.id,
-      formType: sub.formType,
-      submittedAt: sub.submittedAt,
-      formData: JSON.parse(sub.formData),
-    }))
-
-    submissions.value = [...submissions.value, ...transformedSubmissions]
+    await loadSubmissions()
   } catch (error) {
     console.error('Error generating test data:', error)
     alert('Error generating test data. Make sure the backend is running!')
@@ -261,8 +277,15 @@ const generateTestData = async () => {
 const filteredSubmissions = computed(() => {
   if (!searchQuery.value) return submissions.value
   return submissions.value.filter((sub) =>
-    sub.formData.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
+    (sub.formData as FormData).name.toLowerCase().includes(searchQuery.value.toLowerCase()),
   )
+})
+
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  totalCount: 0,
+  totalPages: 0,
 })
 
 const openCreateModal = () => {
@@ -326,7 +349,6 @@ const submitForm = async () => {
       showFormModal.value = false
       resetForm()
 
-      // Refresh the submissions list
       await loadSubmissions()
     }
   } catch (error) {
@@ -334,21 +356,36 @@ const submitForm = async () => {
   }
 }
 
-const loadSubmissions = async () => {
-  try {
-    const response = await fetch(`${apiUrl}/all/ContactForm`)
-    if (response.ok) {
-      const backendSubmissions = await response.json()
+// Method to change pages
+const goToPage = (page: number) => {
+  if (page < 1 || page > pagination.totalPages) return
+  pagination.currentPage = page
+  loadSubmissions()
+}
 
-      submissions.value = backendSubmissions.map((sub: any) => ({
+const loadSubmissions = async () => {
+  loading.value = true
+  try {
+    const response = await fetch(
+      `${apiUrl}/all/ContactForm?page=${pagination.currentPage}&pageSize=${pagination.pageSize}`,
+    )
+    if (response.ok) {
+      const result: PaginatedResult = await response.json()
+
+      submissions.value = result.items.map((sub: SubmissionResponse) => ({
         id: sub.id,
         formType: sub.formType,
         submittedAt: sub.submittedAt,
         formData: JSON.parse(sub.formData),
       }))
+
+      pagination.totalCount = result.totalCount
+      pagination.totalPages = result.totalPages
     }
   } catch (error) {
     console.error('Error loading submissions:', error)
+  } finally {
+    loading.value = false
   }
 }
 
