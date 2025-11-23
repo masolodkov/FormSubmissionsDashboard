@@ -4,12 +4,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FormService.Controllers
 {
+    /// <summary>
+    /// Form Submission API - Handles form creation, retrieval, search and management
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class SubmissionsController(IFormProcessor formProcessor) : ControllerBase
     {
         private readonly IFormProcessor _formProcessor = formProcessor;
 
+        /// <summary>
+        /// Submit a new form
+        /// </summary>
+        /// <param name="submission">Form submission data</param>
+        /// <returns>Submission ID</returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] FormSubmissionDTO submission)
         {
@@ -24,8 +32,15 @@ namespace FormService.Controllers
             }
         }
 
+        /// <summary>
+        /// Get paginated form submissions
+        /// </summary>
+        /// <param name="formType">Type of form</param>
+        /// <param name="page">Page number</param>
+        /// <param name="pageSize">Page size</param>
+        /// <returns>Paginated list of submissions</returns>
         [HttpGet("all/{formType}")]
-        public async Task<IActionResult> GetAll(string formType, [FromQuery] int page, [FromQuery] int pageSize)
+        public async Task<IActionResult> GetAll(string formType, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -38,6 +53,12 @@ namespace FormService.Controllers
             }
         }
 
+        /// <summary>
+        /// Get a submitted form data
+        /// </summary>
+        /// <param name="formType">Type of form</param>
+        /// <param name="id">Submission Id</param>
+        /// <returns></returns>
         [HttpGet("{formType}/{id}")]
         public async Task<IActionResult> GetById(string formType, Guid id)
         {
@@ -45,6 +66,12 @@ namespace FormService.Controllers
             return submission != null ? Ok(submission) : NotFound();
         }
 
+        /// <summary>
+        /// Delete a submission
+        /// </summary>
+        /// <param name="formType">Type of form</param>
+        /// <param name="id">Submission id</param>
+        /// <returns></returns>
         [HttpDelete("{formType}/{id}")]
         public async Task<IActionResult> Delete(string formType, Guid id)
         {
@@ -52,6 +79,11 @@ namespace FormService.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Advanced search with filtering and pagination
+        /// </summary>
+        /// <param name="request">Search criteria including field filters</param>
+        /// <returns>Paginated search results</returns>
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] FormSearchRequest request)
         {
@@ -68,6 +100,11 @@ namespace FormService.Controllers
 
         #region === FOR TEST PURPOSE ===
 
+        /// <summary>
+        /// Generates a random submissions to test
+        /// </summary>
+        /// <param name="count">Number of submissions to generate</param>
+        /// <returns>Generated submissions</returns>
         [HttpPost("testData")]
         public async Task<IActionResult> GenerateTestData([FromQuery] int count)
         {
