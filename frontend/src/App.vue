@@ -53,7 +53,7 @@
             <h6 class="mb-0">🔍 Advanced Search</h6>
           </div>
           <div class="card-body">
-            <form @submit.prevent="performAdvancedSearch">
+            <form @submit.prevent="() => performAdvancedSearch()">
               <!-- Name Search -->
               <div class="mb-3">
                 <label class="form-label small">Name Contains</label>
@@ -362,6 +362,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import Pagination from './components/PaginationControl.vue'
+import { getApiUrl } from '@/config/api'
 
 interface FormData {
   name: string
@@ -413,7 +414,6 @@ const searchQuery = ref('')
 const modalMode = ref<'create' | 'view' | 'edit'>('create')
 const currentSubmissionId = ref<number | null>(null)
 const loading = ref(false)
-const apiUrl = 'http://localhost:5127/api/submissions'
 const randomSubmitsCount = 25
 const searchTimeout = ref<number | null>(null)
 const isSearching = ref(false)
@@ -538,7 +538,7 @@ const performAdvancedSearch = async (resetPage: boolean = true) => {
       pageSize: pagination.pageSize,
     }
 
-    const response = await fetch(`${apiUrl}/search`, {
+    const response = await fetch(`${getApiUrl('SEARCH')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -600,7 +600,7 @@ const searchSubmissionsByDefField = async () => {
       pageSize: pagination.pageSize,
     }
 
-    const response = await fetch(`${apiUrl}/search`, {
+    const response = await fetch(`${getApiUrl('SEARCH')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -631,7 +631,7 @@ const searchSubmissionsByDefField = async () => {
 const generateTestData = async () => {
   loading.value = true
   try {
-    const response = await fetch(`${apiUrl}/testData?count=${randomSubmitsCount}`, {
+    const response = await fetch(`${getApiUrl('TEST_DATA')}?count=${randomSubmitsCount}`, {
       method: 'POST',
     })
     if (!response.ok) {
@@ -700,7 +700,7 @@ const submitForm = async () => {
       formData: JSON.stringify(formData),
     }
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(getApiUrl('POST'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -760,7 +760,7 @@ const loadSubmissions = async () => {
   loading.value = true
   try {
     const response = await fetch(
-      `${apiUrl}/all/ContactForm?page=${pagination.currentPage}&pageSize=${pagination.pageSize}`,
+      `${getApiUrl('ALL')}/ContactForm?page=${pagination.currentPage}&pageSize=${pagination.pageSize}`,
     )
     if (response.ok) {
       const result: PaginatedResult = await response.json()
