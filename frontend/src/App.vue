@@ -5,15 +5,22 @@
       <h1 class="h3">📋 Form Submissions</h1>
     </div>
 
-    <!-- Search Bar -->
+    <!-- ToolBar -->
     <div class="row mb-3">
-      <div class="col-md-6">
+      <div class="col-md-6 position-relative">
         <input
           v-model="searchQuery"
           type="text"
           class="form-control"
-          placeholder="Search by name..."
+          :placeholder="`Search by ${defSearchField}`"
+          @input="performSearch"
         />
+        <!-- Loading indicator -->
+        <div v-if="isSearching" class="position-absolute top-50 end-0 translate-middle-y me-3">
+          <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">Searching...</span>
+          </div>
+        </div>
       </div>
       <div class="col-md-6 d-flex gap-2 justify-content-md-end">
         <button
@@ -24,6 +31,16 @@
           {{ loading ? 'Generating...' : `🎲 +${randomSubmitsCount} Random Submits` }}
         </button>
         <button class="btn btn-primary flex-shrink-0" @click="openCreateModal">+ New Form</button>
+      </div>
+    </div>
+    <div v-if="searchQuery.trim()" class="row mb-2">
+      <div class="col">
+        <div class="alert alert-info py-2 d-flex align-items-center">
+          <span>🔍 Showing results for: "{{ searchQuery }}"</span>
+          <button class="btn btn-sm btn-outline-secondary ms-auto" @click="clearSearch">
+            Clear Search
+          </button>
+        </div>
       </div>
     </div>
 
@@ -40,7 +57,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="submission in filteredSubmissions" :key="submission.id">
+            <tr v-for="submission in submissions" :key="submission.id">
               <td>{{ submission.formData.name }}</td>
               <td>{{ submission.formData.country }}</td>
               <td>{{ submission.formData.birthDate }}</td>
@@ -50,7 +67,7 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="filteredSubmissions.length === 0">
+            <tr v-if="submissions.length === 0">
               <td colspan="4" class="text-center text-muted">
                 No submissions yet. Create your first form!
               </td>
@@ -191,7 +208,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import Pagination from './Pagination.vue'
+import Pagination from './components/Pagination-control.vue'
 
 interface FormData {
   name: string
@@ -222,6 +239,22 @@ interface PaginatedResult {
   totalPages: number
 }
 
+interface FormFieldFilter {
+  fieldPath: string
+  operator: 'contains' | 'range' | 'equals'
+  value: any
+  value2?: any
+}
+
+interface FormSearchRequest {
+  formType?: string
+  fromDate?: string | null
+  toDate?: string | null
+  fieldFilters: FormFieldFilter[]
+  page: number
+  pageSize: number
+}
+
 const showFormModal = ref(false)
 const searchQuery = ref('')
 const modalMode = ref<'create' | 'view' | 'edit'>('create')
@@ -229,6 +262,11 @@ const currentSubmissionId = ref<number | null>(null)
 const loading = ref(false)
 const apiUrl = 'http://localhost:5127/api/submissions'
 const randomSubmitsCount = 25
+const searchTimeout = ref<number | null>(null)
+const isSearching = ref(false)
+// reserverd for different form types, like "OrderForm", "ProductForm", etc
+const formType = ref('ContactForm')
+const defSearchField = ref('name')
 
 const formData = reactive<FormData>({
   name: '',
@@ -254,17 +292,79 @@ const submissions = ref<Submission[]>([
   },
 ])
 
+const performSearch = () => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+
+  searchTimeout.value = setTimeout(async () => {
+    pagination.currentPage = 1
+    if (searchQuery.value.trim()) {
+      await searchSubmissionsByDefField()
+    } else {
+      // If search is empty, load normal submissions
+      await loadSubmissions()
+    }
+  }, 500) as unknown as number
+}
+
+const searchSubmissionsByDefField = async () => {
+  isSearching.value = true
+  try {
+    const searchRequest: FormSearchRequest = {
+      formType: formType.value,
+      fromDate: null,
+      toDate: null,
+      fieldFilters: [
+        {
+          fieldPath: defSearchField.value,
+          operator: 'contains',
+          value: searchQuery.value,
+        },
+      ],
+      page: pagination.currentPage,
+      pageSize: pagination.pageSize,
+    }
+
+    const response = await fetch(`${apiUrl}/search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(searchRequest),
+    })
+
+    if (response.ok) {
+      const result: PaginatedResult = await response.json()
+
+      submissions.value = result.items.map((sub: SubmissionResponse) => ({
+        id: sub.id,
+        formType: sub.formType,
+        submittedAt: sub.submittedAt,
+        formData: JSON.parse(sub.formData),
+      }))
+
+      pagination.totalCount = result.totalCount
+      pagination.totalPages = result.totalPages
+    }
+  } catch (error) {
+    console.error('Error searching submissions:', error)
+  } finally {
+    isSearching.value = false
+  }
+}
+
 const generateTestData = async () => {
   loading.value = true
   try {
     const response = await fetch(`${apiUrl}/testData?count=${randomSubmitsCount}`, {
       method: 'POST',
     })
-
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-
+    searchQuery.value = ''
+    pagination.currentPage = 1
     await loadSubmissions()
   } catch (error) {
     console.error('Error generating test data:', error)
@@ -273,13 +373,6 @@ const generateTestData = async () => {
     loading.value = false
   }
 }
-
-const filteredSubmissions = computed(() => {
-  if (!searchQuery.value) return submissions.value
-  return submissions.value.filter((sub) =>
-    (sub.formData as FormData).name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-  )
-})
 
 const pagination = reactive({
   currentPage: 1,
@@ -348,19 +441,28 @@ const submitForm = async () => {
       // Close modal and reset form
       showFormModal.value = false
       resetForm()
-
-      await loadSubmissions()
+      clearSearch()
     }
   } catch (error) {
     console.error('Error submitting form:', error)
   }
 }
 
+const clearSearch = () => {
+  searchQuery.value = ''
+  pagination.currentPage = 1
+  loadSubmissions()
+}
+
 // Method to change pages
 const goToPage = (page: number) => {
   if (page < 1 || page > pagination.totalPages) return
   pagination.currentPage = page
-  loadSubmissions()
+  if (searchQuery.value.trim()) {
+    searchSubmissionsByDefField()
+  } else {
+    loadSubmissions()
+  }
 }
 
 const loadSubmissions = async () => {
@@ -404,5 +506,14 @@ onMounted(() => {
 }
 .card {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.search-loading {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.alert {
+  border-radius: 0.375rem;
 }
 </style>

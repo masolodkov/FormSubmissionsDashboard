@@ -60,7 +60,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// Define props
 interface Props {
   currentPage: number
   totalPages: number
@@ -76,7 +75,7 @@ const emit = defineEmits<{
 const visiblePages = computed(() => {
   const current = props.currentPage
   const total = props.totalPages
-  const range = 3 // Show 3 pages on each side of current
+  const range = 3 // count of pages on each side of current
 
   let start = Math.max(1, current - range)
   let end = Math.min(total, current + range)
