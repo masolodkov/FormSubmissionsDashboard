@@ -36,9 +36,9 @@
         <button
           class="btn btn-outline-info flex-shrink-0"
           @click="generateTestData"
-          :disabled="loading"
+          :disabled="generating"
         >
-          {{ loading ? 'Generating...' : `🎲 +${randomSubmitsCount} Random Submits` }}
+          {{ generating ? 'Generating...' : `🎲 +${randomSubmitsCount} Random Submits` }}
         </button>
         <button class="btn btn-primary flex-shrink-0" @click="openCreateModal">+ New Form</button>
       </div>
@@ -414,7 +414,8 @@ const searchQuery = ref('')
 const modalMode = ref<'create' | 'view' | 'edit'>('create')
 const currentSubmissionId = ref<number | null>(null)
 const loading = ref(false)
-const randomSubmitsCount = 25
+const generating = ref(false)
+const randomSubmitsCount = 10_000
 const searchTimeout = ref<number | null>(null)
 const isSearching = ref(false)
 const availableFormTypes = ref(['ContactForm'])
@@ -629,7 +630,7 @@ const searchSubmissionsByDefField = async () => {
 }
 
 const generateTestData = async () => {
-  loading.value = true
+  generating.value = true
   try {
     const response = await fetch(`${getApiUrl('TEST_DATA')}?count=${randomSubmitsCount}`, {
       method: 'POST',
@@ -644,7 +645,7 @@ const generateTestData = async () => {
     console.error('Error generating test data:', error)
     alert('Error generating test data. Make sure the backend is running!')
   } finally {
-    loading.value = false
+    generating.value = false
   }
 }
 

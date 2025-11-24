@@ -122,7 +122,7 @@ namespace FormService.Controllers
                     }
                 }
 
-                return Ok(results);
+                return Ok(results?.Count ?? 0);
             }
             catch (Exception ex)
             {
